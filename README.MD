@@ -7,7 +7,7 @@ Using a synthetic pateint data generator called synthea, I generated over 100,00
 
 ## [Recomendation]
 
-
+I recommend the XGBoost model as the model used to predict clinical no-show rates. The XGBoost performed the best in ROC AUC. This means this model is the best at discriminating between a no-show and a show. This is important becuase we care mostly about if the model is accurate when predicting no-shows vs shows and less about the actual percentage point. Second, XGBoost is great with handling non-linear trends and handling large datasets. Its ability to quickly be trained off huge amounts of data and its regularization benefits makes it the clear choice for our current recomendation. However, the Random Forest model also performed well and is a very viable option.
 
 
 ## [Disclaimer]
