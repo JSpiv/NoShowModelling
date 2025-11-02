@@ -13,6 +13,6 @@ However, the Random Forest model also performed well and is a very viable option
 
 
 ## Disclaimer
-This project is for demonstration only. The goal of the project is to give possible avenues that could be used on real data sets to predict no-show rates. All of thios data is synthetic and does not represent real trends.
+This project is for demonstration only. The goal of the project is to give possible avenues that could be used on real data sets to predict no-show rates. All of this data is synthetic and does not represent real trends.
 
-In order to aid in this process, different AI tools where used to clean, debugg, and write code in different parts of this project.
+In order to aid in this process, different AI tools where used to clean, debug, and write code in different parts of this project.
