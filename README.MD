@@ -16,3 +16,9 @@ However, the Random Forest model also performed well and is a very viable option
 This project is for demonstration only. The goal of the project is to give possible avenues that could be used on real data sets to predict no-show rates. All of this data is synthetic and does not represent real trends.
 
 In order to aid in this process, different AI tools where used to clean, debug, and write code in different parts of this project.
+
+
+## Newest updates
+Small labelling error, led to misleading metrics. Recall that all no-shows are synthetically generated.
+
+Furthermore, there is a large calibration error in logistic and elastic net classifiers. We will circle back and add normilization to fix this calibration mistake.

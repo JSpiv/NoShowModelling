@@ -142,7 +142,7 @@ shows = enc_demo[["PATIENT", "START"]].copy()
 lead = rng.integers(LEAD_TIME_MIN, LEAD_TIME_MAX + 1, size=len(shows))
 shows["scheduled_dt"] = shows["START"] - pd.to_timedelta(lead, unit="D")
 shows["scheduled_hour"] = rng.integers(CLINIC_HOURS_START, CLINIC_HOURS_END, size=len(shows))
-shows["show"] = 1
+shows["no_show"] = 0
 
 n_shows = len(shows)
 if n_shows == 0:
@@ -171,14 +171,14 @@ noshows = pd.DataFrame({
     "PATIENT": rng.choice(patient_ids, size=n_noshows, replace=True),
     "scheduled_dt": pd.to_datetime(rand_seconds, unit="s", utc=True),
     "scheduled_hour": rng.integers(CLINIC_HOURS_START, CLINIC_HOURS_END, size=n_noshows),
-    "show": 0,
+    "no_show": 1,
     "START": pd.NaT,   # no encounter occurred
 })
 
 appointments = pd.concat(
     [
-        shows[["PATIENT", "scheduled_dt", "scheduled_hour", "show", "START"]],
-        noshows[["PATIENT", "scheduled_dt", "scheduled_hour", "show", "START"]],
+        shows[["PATIENT", "scheduled_dt", "scheduled_hour", "no_show", "START"]],
+        noshows[["PATIENT", "scheduled_dt", "scheduled_hour", "no_show", "START"]],
     ],
     ignore_index=True
 )
@@ -219,7 +219,7 @@ appointments["is_new_patient"] = (appointments["prior_enc_365"] == 0).astype(int
 
 # Prior no-shows per patient (strictly before current appointment)
 appointments = appointments.sort_values(["PATIENT", "scheduled_dt"]).copy()
-_noshow_flag = (appointments["show"] == 0).astype(int)
+_noshow_flag = (appointments["no_show"] == 1).astype(int)
 appointments["prior_noshows"] = (
     _noshow_flag.groupby(appointments["PATIENT"]).cumsum().shift(fill_value=0).astype(int)
 )
@@ -227,17 +227,17 @@ appointments["prior_noshows"] = (
 # Keep only pediatric ages (defensive)
 appointments = appointments[appointments["age_years"].between(0, 18, inclusive="both")].copy()
 print(
-    "Post-filter pediatrics — shows=", int((appointments["show"] == 1).sum()),
-    ", noshows=", int((appointments["show"] == 0).sum()),
+    "Post-filter pediatrics — shows=", int((appointments["no_show"] == 0).sum()),
+    ", noshows=", int((appointments["no_show"] == 1).sum()),
     ", total=", len(appointments),
-    ", no_show_rate=", float(1 - appointments["show"].mean())
+    ", no_show_rate=", float(appointments["no_show"].mean())
 )
 
 # Final selected columns
 keep = [
     "PATIENT", "scheduled_dt", "scheduled_hour", "weekday", "month",
     "lead_time_days", "age_years", "GENDER", "RACE", "ETHNICITY",
-    "prior_enc_30", "prior_enc_180", "prior_enc_365", "is_new_patient", "show"
+    "prior_enc_30", "prior_enc_180", "prior_enc_365", "is_new_patient", "no_show"
 ]
 # Insert the new column into the exported dataset
 keep.insert(keep.index("prior_enc_30"), "prior_noshows")
@@ -246,13 +246,13 @@ appointments = appointments[keep].reset_index(drop=True)
 # Save the modeling dataset
 out_csv = PROC_DIR / "appointments_ml.csv"
 appointments.to_csv(out_csv, index=False)
-print(f"Saved modeling dataset: {out_csv}  (rows={len(appointments)}, no_show_rate={1 - (appointments['show'].mean()):.3f})")
+print(f"Saved modeling dataset: {out_csv}  (rows={len(appointments)}, no_show_rate={(appointments['no_show'].mean()):.3f})")
 
 # -------------------------
 # 3) Train/test & preprocessing
 # -------------------------
-X = appointments.drop(columns=["show", "scheduled_dt"])
-y = appointments["show"].astype(int)
+X = appointments.drop(columns=["no_show", "scheduled_dt"])
+y = appointments["no_show"].astype(int)
 
 numeric_features = [
     "age_years", "lead_time_days", "prior_noshows", "prior_enc_30", "prior_enc_180",
