@@ -285,7 +285,7 @@ results = []
 # Logistic Regression (L2)
 logreg = Pipeline([
     ("prep", preprocess),
-    ("clf", LogisticRegression(max_iter=2000, class_weight="balanced", solver="lbfgs", random_state=SEED)),
+    ("clf", LogisticRegression(max_iter=2000, class_weight=None, solver="lbfgs", random_state=SEED)),
 ])
 results.append(evaluate_model("logistic_regression", logreg, X_train, X_test, y_train, y_test))
 
@@ -294,7 +294,7 @@ elastic = Pipeline([
     ("prep", preprocess),
     ("clf", LogisticRegression(
         penalty="elasticnet", l1_ratio=0.5, solver="saga",
-        max_iter=5000, class_weight="balanced", random_state=SEED)),
+        max_iter=5000, class_weight=None, random_state=SEED)),
 ])
 results.append(evaluate_model("elastic_net_logistic", elastic, X_train, X_test, y_train, y_test))
 
@@ -303,22 +303,19 @@ rf = Pipeline([
     ("prep", preprocess),
     ("clf", RandomForestClassifier(
         n_estimators=400, max_depth=None, min_samples_leaf=2,
-        class_weight="balanced_subsample", n_jobs=-1, random_state=SEED)),
+        class_weight=None, n_jobs=-1, random_state=SEED)),
 ])
 results.append(evaluate_model("random_forest", rf, X_train, X_test, y_train, y_test))
 
 # XGBoost (optional)
 if HAS_XGB:
-    pos = y_train.sum()
-    neg = len(y_train) - pos
-    spw = float(neg / max(1, pos))
     xgb = Pipeline([
         ("prep", preprocess),
         ("clf", XGBClassifier(
             n_estimators=500, max_depth=4, learning_rate=0.05,
             subsample=0.9, colsample_bytree=0.9, reg_lambda=1.0,
             random_state=SEED, n_jobs=-1, eval_metric="logloss",
-            tree_method="hist", scale_pos_weight=spw)),
+            tree_method="hist")),
     ])
     results.append(evaluate_model("xgboost", xgb, X_train, X_test, y_train, y_test))
 else:
