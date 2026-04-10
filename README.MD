@@ -19,8 +19,6 @@ In order to aid in this process, different AI tools where used to clean, debug, 
 
 
 ## Newest updates
-Small labelling error, led to misleading metrics. Recall that all no-shows are synthetically generated.
+Small labelling error led to misleading metrics. Recall that all no-shows are synthetically generated.
 
-Furthermore, there is a large calibration error in logistic and elastic net classifiers. Current fix is to add the class weights, orignally there to ensure representation from the less repesented class (no_shows). Our probabibilities and metrics should now read more true.
-
-Overview_auc_roc_auprc.png has not been updated
+Furthermore, there is a large calibration error in logistic and elastic net classifiers. Current fix is to add the class weights, orignally there to ensure representation from the less repesented class (no_shows). Our probabibilities and metrics should now read more true and at first glance are a lot more resonable.

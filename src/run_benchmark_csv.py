@@ -285,7 +285,8 @@ results = []
 # Logistic Regression (L2)
 logreg = Pipeline([
     ("prep", preprocess),
-    ("clf", LogisticRegression(max_iter=2000, class_weight=None, solver="lbfgs", random_state=SEED)),
+    ("clf", LogisticRegression(
+        max_iter=2000, class_weight="balanced", solver="lbfgs", random_state=SEED)),
 ])
 results.append(evaluate_model("logistic_regression", logreg, X_train, X_test, y_train, y_test))
 
@@ -294,7 +295,7 @@ elastic = Pipeline([
     ("prep", preprocess),
     ("clf", LogisticRegression(
         penalty="elasticnet", l1_ratio=0.5, solver="saga",
-        max_iter=5000, class_weight=None, random_state=SEED)),
+        max_iter=5000, class_weight="balanced", random_state=SEED)),
 ])
 results.append(evaluate_model("elastic_net_logistic", elastic, X_train, X_test, y_train, y_test))
 
@@ -326,9 +327,6 @@ else:
 # -------------------------
 metrics_df = pd.DataFrame(results)
 metrics_csv = METRICS_DIR / "metrics.csv"
-if metrics_csv.exists():
-    old = pd.read_csv(metrics_csv)
-    metrics_df = pd.concat([old, metrics_df], ignore_index=True)
 metrics_df.to_csv(metrics_csv, index=False)
 print(f"Saved metrics to: {metrics_csv}")
 
@@ -379,10 +377,12 @@ try:
     ax1 = fig.add_subplot(gs[0, 0])
     df1 = plot_dfs["auc_roc"]
     model_labels = [format_model_name(m) for m in df1["model"]]
-    ax1.bar(model_labels, df1["auc_roc"], color="black", width=0.6)
+    x1 = np.arange(len(df1))
+    ax1.bar(x1, df1["auc_roc"], color="black", width=0.6)
     ax1.set_title("ROC AUC (Receiver Operating Characteristic Area Under Curve)", fontsize=7, fontweight="bold")
     ax1.set_ylabel("ROC AUC", fontsize=9)
     ax1.set_ylim(0.0, 1.0)
+    ax1.set_xticks(x1)
     ax1.set_xticklabels(model_labels, rotation=0, ha="center", fontsize=4)
     ax1.grid(axis="y", alpha=0.3, linestyle="--")
 
@@ -390,10 +390,12 @@ try:
     ax2 = fig.add_subplot(gs[1, 0])
     df2 = plot_dfs["brier"]
     model_labels2 = [format_model_name(m) for m in df2["model"]]
-    ax2.bar(model_labels2, df2["brier"], color="black", width=0.6)
+    x2 = np.arange(len(df2))
+    ax2.bar(x2, df2["brier"], color="black", width=0.6)
     ax2.set_title("Brier Score (lower is better)", fontsize=7, fontweight="bold")
     ax2.set_ylabel("Brier Score", fontsize=9)
     ax2.set_ylim(0.0, 1.0)
+    ax2.set_xticks(x2)
     ax2.set_xticklabels(model_labels2, rotation=0, ha="center", fontsize=4)
     ax2.grid(axis="y", alpha=0.3, linestyle="--")
 
@@ -462,36 +464,58 @@ try:
                 df_pred.groupby("patient_id", as_index=False)["no_show_percent"].max()
             )
             # Top N patients
-            TOP_N = 10
+            TOP_N = 15
             top = per_patient.sort_values("no_show_percent", ascending=False).head(TOP_N)
 
-            # Prepare table data
+            def _short_id(pid: str) -> str:
+                s = str(pid)
+                if len(s) <= 24:
+                    return s
+                return f"{s[:10]}…{s[-8:]}"
+
+            # Prepare table data (truncated IDs for readability; full ID remains in CSV export)
             y_labels = top["patient_id"].astype(str).tolist()
             x_vals = top["no_show_percent"].tolist()
-            table_rows = [[str(pid), f"{val:.1f}%"] for pid, val in zip(y_labels, x_vals)]
-            table_data = [["Patient ID", "No - Show Percentage"]] + table_rows
+            table_rows = [
+                [_short_id(pid), f"{val:.1f}%"] for pid, val in zip(y_labels, x_vals)
+            ]
+            table_data = [["Patient ID (truncated)", "No-show %"]] + table_rows
 
-            # Table-only figure
-            fig_height = max(4.0, 0.6 * len(top) + 1.5)
-            fig, ax_tbl = plt.subplots(figsize=(8, fig_height))
+            # Table-only figure — light borders, zebra rows; % cell: yellow if >50, red if ≥70
+            fig_height = max(4.5, 0.45 * len(top) + 1.8)
+            fig, ax_tbl = plt.subplots(figsize=(7.2, fig_height))
+            fig.patch.set_facecolor("#fafafa")
             ax_tbl.axis("off")
             tbl = ax_tbl.table(cellText=table_data, cellLoc="center", loc="center")
             tbl.auto_set_font_size(False)
-            tbl.set_fontsize(11)
-            tbl.scale(1.2, 1.5)
+            tbl.set_fontsize(10)
+            tbl.scale(1.15, 1.35)
 
-            # Header bold + light gray background
-            for j in range(2):
-                tbl[(0, j)].set_text_props(weight="bold")
-                tbl[(0, j)].set_facecolor("#f0f0f0")
+            for (row, col), cell in tbl.get_celld().items():
+                cell.set_edgecolor("#d8d8d8")
+                cell.set_linewidth(0.6)
+                if row == 0:
+                    cell.set_text_props(weight="bold")
+                    cell.set_facecolor("#e9ecef")
+                    continue
+                if col == 0:
+                    cell.set_facecolor("#f7f7f9" if row % 2 == 1 else "#ffffff")
+                else:
+                    base = "#f0f7ff" if row % 2 == 1 else "#ffffff"
+                    cell.set_facecolor(base)
+                if col == 1 and row > 0:
+                    val = x_vals[row - 1]
+                    if val >= 70:
+                        cell.set_facecolor("#fde8e8")
+                    elif val > 50:
+                        cell.set_facecolor("#fff3bf")
 
-            # Color percentage cells light red when >= 75%
-            for i, val in enumerate(x_vals, start=1):
-                if val >= 75:
-                    tbl[(i, 1)].set_facecolor("#ffcccc")
-
-            # Title above table
-            ax_tbl.set_title("Top 10 Patients by Predicted No-Show Percentage", fontsize=12, pad=12)
+            ax_tbl.set_title(
+                f"Top {TOP_N} patients by predicted no-show risk (XGBoost, test set)",
+                fontsize=12,
+                pad=14,
+                color="#222222",
+            )
 
             fig.tight_layout()
             out_png = METRICS_DIR / "top_no_show_patients.png"
